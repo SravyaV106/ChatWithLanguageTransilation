@@ -100,7 +100,7 @@ function ChatRoom() {
 
   useEffect(() => {
     socket.on('receive_message', async (data) => {
-      console.log('Received message:', data); 
+      console.log('Received message:', data);
 
       const { translated_text, original_text } = data;
       const textToDisplay = translationEnabled ? translated_text : original_text;
@@ -141,7 +141,7 @@ function ChatRoom() {
           uid,
           photoURL,
         });
-        socket.emit('send_message', { message }); 
+        socket.emit('send_message', { message });
         setMessage('');
         dummy.current.scrollIntoView({ behavior: 'smooth' });
       } catch (err) {
