@@ -20,7 +20,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { useCollectionData } from 'react-firebase-hooks/firestore';
 import io from 'socket.io-client';
 
-// Initialize Firebase
+// Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -34,8 +34,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 
-// Initialize Socket.IO
-const socket = io('http://localhost:5000'); // Flask server URL
+// Socket.IO setup
+const socket = io('http://localhost:5000'); // Update with your backend server URL
 
 function TranslateApp() {
   const [user, loading] = useAuthState(auth);
@@ -43,7 +43,7 @@ function TranslateApp() {
   return (
     <div className="App">
       <header>
-        <h1>English to Telugu Translator</h1>
+        <h1>Multi-Language Translator</h1>
         {auth.currentUser && <SignOut />}
       </header>
 
@@ -97,6 +97,23 @@ function ChatRoom() {
   const [message, setMessage] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [translationEnabled, setTranslationEnabled] = useState(true);
+  const [targetLanguage, setTargetLanguage] = useState('te'); // Default language
+  const [languageOptions, setLanguageOptions] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:5000') 
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.languages) {
+          const options = Object.entries(data.languages).map(([code, name]) => ({
+            code,
+            name,
+          }));
+          setLanguageOptions(options);
+        }
+      })
+      .catch((error) => console.error('Error fetching languages:', error));
+  }, []);
 
   useEffect(() => {
     socket.on('receive_message', async (data) => {
@@ -111,8 +128,8 @@ function ChatRoom() {
           await addDoc(messagesRef, {
             text: textToDisplay,
             createdAt: serverTimestamp(),
-            uid: 'bot',
-            photoURL:
+            uid: uid,
+            photoURL: photoURL ||
               'https://static.vecteezy.com/system/resources/previews/014/194/216/non_2x/avatar-icon-human-a-person-s-badge-social-media-profile-symbol-the-symbol-of-a-person-vector.jpg',
           });
         } catch (err) {
@@ -141,7 +158,7 @@ function ChatRoom() {
           uid,
           photoURL,
         });
-        socket.emit('send_message', { message });
+        socket.emit('send_message', { message, targetLanguage });
         setMessage('');
         dummy.current.scrollIntoView({ behavior: 'smooth' });
       } catch (err) {
@@ -157,6 +174,21 @@ function ChatRoom() {
   return (
     <>
       <main>
+        <div className="language-selector">
+          <label htmlFor="language">Target Language:</label>
+          <select
+            id="language"
+            value={targetLanguage}
+            onChange={(e) => setTargetLanguage(e.target.value)}
+          >
+            {languageOptions.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="toggle-translation">
           <label>
             Translation:
@@ -190,7 +222,9 @@ function ChatRoom() {
       {translatedText && (
         <div className="translated-text">
           <h3>
-            {translationEnabled ? 'Translated Text (Telugu):' : 'Original Text:'}
+            {translationEnabled
+              ? `Translated Text (${languageOptions.find((lang) => lang.code === targetLanguage)?.name}):`
+              : 'Original Text:'}
           </h3>
           <p>{translatedText}</p>
         </div>
